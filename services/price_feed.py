@@ -87,12 +87,15 @@ class PriceFeed:
     # ---------------------------------------------------------------- _dispatch
     def _dispatch(self, sym: str, price: float, ts: float) -> None:
         """
-        Рассылает цену всем подписчикам; shallow-copy списка callback'ов,
-        чтобы не держать lock и не копировать asyncio.Task.
+        Рассылает цену всем подписчикам. Если callback возвращает coroutine,
+        он запускается отдельной ``asyncio``-задачей. Это позволяет
+        использовать как синхронные, так и асинхронные обработчики цен.
         """
         for cb in list(self._callbacks.get(sym, ())):
             try:
-                cb(sym, price, ts)
+                res = cb(sym, price, ts)
+                if asyncio.iscoroutine(res):
+                    asyncio.create_task(res)
             except Exception:
                 logger.exception("price callback error [%s]", sym)
 

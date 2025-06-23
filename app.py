@@ -30,7 +30,7 @@ fast_app.include_router(api_management.router)
 @fast_app.post("/test_price")
 async def test_price(request: Request):
     data = await request.json()
-    await callback(data["symbol"], float(data["price"]))
+    await callback(data["symbol"], float(data["price"]), 0.0)
 
 
 #@fast_app.post("/alert")
