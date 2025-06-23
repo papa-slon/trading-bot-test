@@ -48,15 +48,14 @@ def websocket_loop(pos_list: List[str]) -> None:
     Отдельный WS-поток для отслеживания тикеров,
     необходимых сравнению с ценами ордеров.
     """
-    BingxWebsocket(pos_list, callback).start()
+    BingxWebsocket(pos_list, lambda s, p: asyncio.create_task(callback(s, p, 0.0))).start()
 
 
 # ────────────────────── callbacks / GC ──────────────────────
-async def callback(symbol: str, price: float):
+async def callback(symbol: str, price: float, ts: float) -> None:
     """
     Проверяем лимит-ордера (TP / Averaging) на исполнение по тикеру.
     """
-    return
     orders = await get_orders_by_conditions(
         [
             models.Order.position == symbol,
