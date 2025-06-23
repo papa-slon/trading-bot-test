@@ -12,7 +12,7 @@ from core.alert_server import logger
 from core.trading_indicators import startup, main_loop
 from core.trading_logic import TradingBot
 from gui.app_gui import cls_dict, BotGUI, callback, run_async_parallel
-from models import get_apis
+from models import get_apis, get_settings_by_symbol
 from client_server.routes import auth, api_management
 from sqlalchemy_enums import ReasonEnum
 
@@ -30,7 +30,7 @@ fast_app.include_router(api_management.router)
 @fast_app.post("/test_price")
 async def test_price(request: Request):
     data = await request.json()
-    await callback(data["symbol"], float(data["price"]))
+    await callback(data["symbol"], float(data["price"]), 0.0)
 
 
 #@fast_app.post("/alert")
@@ -62,9 +62,21 @@ async def tv_alert(request: Request):
                 secret = api.secret_key
 
                 cls = deepcopy(cls_dict[market])
-                bot = TradingBot(cls.client, cls.symbol_list, cls.take_profit_percent,
-                                 cls.initial_entry_percent, cls.averaging_levels, cls.averaging_percents,
-                                 cls.averaging_volume_percents, cls.use_balance_percent, cls.max_symbols)
+                sett = await get_settings_by_symbol(symbol, dict_reason[reason], api.pub_id)
+                bot = TradingBot(
+                    cls.client,
+                    cls.symbol_list,
+                    cls.take_profit_percent,
+                    cls.initial_entry_percent,
+                    cls.averaging_levels,
+                    cls.averaging_percents,
+                    cls.averaging_volume_percents,
+                    cls.use_balance_percent,
+                    cls.max_symbols,
+                    sett.trailing_stop_percentage,
+                    sett.activation_price,
+                    sett.base_stop,
+                )
                 bot.client.api_key = key
                 bot.client.secret_key = secret
                 await bot.set_api()

@@ -101,7 +101,7 @@ class TradingBot:
         )
 
     # ────────────────────────── Работа с ордерами ─────────────────────────── #
-    async def on_price(self, symbol: str, price: float) -> None:
+    async def on_price(self, symbol: str, price: float, ts: float | None = None) -> None:
         try:
             await PriceCache.update(symbol, price)
             self.logger.debug(f"[on_price] Цена обновлена: {symbol}={price}")
@@ -266,7 +266,7 @@ class TradingBot:
                     extra = {
                         "priceRate": self.trailing_stop,
                         "activationPrice": (1 - self.activation_pr)*cur_price,
-                        "stopLoss": json.dumps(stop_loss_dict),
+                        "stopLoss": stop_loss_dict,
                     }
                 )
             except Exception as exc:
@@ -325,7 +325,7 @@ class TradingBot:
                             "timeInForce": "GTC",
                             "priceRate": self.trailing_stop,
                             "activationPrice": (1 - self.activation_pr) * price,
-                            "stopLoss": json.dumps(stop_loss_dict),
+                            "stopLoss": stop_loss_dict,
                         }
                     )
                     metas.append(

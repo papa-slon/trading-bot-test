@@ -48,15 +48,14 @@ def websocket_loop(pos_list: List[str]) -> None:
     Отдельный WS-поток для отслеживания тикеров,
     необходимых сравнению с ценами ордеров.
     """
-    BingxWebsocket(pos_list, callback).start()
+    BingxWebsocket(pos_list, lambda s, p: asyncio.create_task(callback(s, p, 0.0))).start()
 
 
 # ────────────────────── callbacks / GC ──────────────────────
-async def callback(symbol: str, price: float):
+async def callback(symbol: str, price: float, ts: float) -> None:
     """
     Проверяем лимит-ордера (TP / Averaging) на исполнение по тикеру.
     """
-    return
     orders = await get_orders_by_conditions(
         [
             models.Order.position == symbol,
@@ -78,6 +77,7 @@ async def callback(symbol: str, price: float):
 
     for order in orders:
         api = await get_api_by_id(order.api_id)
+        sett = await get_settings_by_symbol(order.position, order.reason, order.api_id)
         template_bot = cls_dict[api.market]
 
         new_bot = TradingBot(
@@ -90,6 +90,9 @@ async def callback(symbol: str, price: float):
             template_bot.averaging_volume_percents,
             template_bot.use_balance_percent,
             template_bot.max_symbols,
+            sett.trailing_stop_percentage,
+            sett.activation_price,
+            sett.base_stop,
         )
         await new_bot.client.set_credentials(api.api_key, api.secret_key)
         #new_bot.client.api_key = api.api_key
@@ -117,6 +120,7 @@ async def callback(symbol: str, price: float):
 
 async def check_tp(api: Api_Key, symbol: str):
     template_bot = cls_dict[api.market]
+    sett = await get_settings_by_symbol(symbol, ReasonEnum.YELLOW, api.pub_id)
     new_bot = TradingBot(
         template_bot.client,
         template_bot.symbol_list,
@@ -127,6 +131,9 @@ async def check_tp(api: Api_Key, symbol: str):
         template_bot.averaging_volume_percents,
         template_bot.use_balance_percent,
         template_bot.max_symbols,
+        sett.trailing_stop_percentage,
+        sett.activation_price,
+        sett.base_stop,
     )
     await new_bot.client.set_credentials(api.api_key, api.secret_key)
     #new_bot.client.api_key = api.api_key
@@ -153,6 +160,7 @@ async def garbage_collector(_: object = None):
             #logger.info(f"[garbage_collector] {slot.position} TP: {tp_order.order_id}")
             orders_avg = await get_averaging_orders(slot.api_id, slot.position)
             api = await get_api_by_id(slot.api_id)
+            sett = await get_settings_by_symbol(slot.position, ReasonEnum.YELLOW, slot.api_id)
             template_bot = cls_dict[api.market]
             new_bot = TradingBot(
                 template_bot.client,
@@ -164,6 +172,9 @@ async def garbage_collector(_: object = None):
                 template_bot.averaging_volume_percents,
                 template_bot.use_balance_percent,
                 template_bot.max_symbols,
+                sett.trailing_stop_percentage,
+                sett.activation_price,
+                sett.base_stop,
             )
             await new_bot.client.set_credentials(api.api_key, api.secret_key)
             #new_bot.client.api_key = api.api_key
@@ -209,6 +220,9 @@ async def open_callback(
                     [float(x) for x in sett.averaging_volume_percents.split(",")],
                     sett.use_balance_percent,
                     template_bot.max_symbols,
+                    sett.trailing_stop_percentage,
+                    sett.activation_price,
+                    sett.base_stop,
                 )
                 await bot.client.set_credentials(api.api_key, api.secret_key)
                 #bot.client.api_key = api.api_key

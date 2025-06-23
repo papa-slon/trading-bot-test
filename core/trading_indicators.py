@@ -189,6 +189,9 @@ async def _dispatch(api_id: str, symbol: str, reason) -> None:
         sett.use_balance_percent,
         sett.leverage,
         template_bot.max_symbols,
+        sett.trailing_stop_percentage,
+        sett.activation_price,
+        sett.base_stop,
     )
 
     # TradingBot сам сохранит ссылку на api-запись

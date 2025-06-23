@@ -94,7 +94,11 @@ class PriceCache:
 
     @classmethod
     def start_gc_task(cls, loop: asyncio.AbstractEventLoop | None = None) -> None:
-        loop = loop or asyncio.get_event_loop()
+        if loop is None:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                return
         if not getattr(cls, "_gc_started", False):
             loop.create_task(cls._gc())
             cls._gc_started = True
@@ -104,5 +108,5 @@ class PriceCache:
 try:
     PriceCache.start_gc_task()
 except RuntimeError:
-    # event-loop запустится позже — GC стартует при первом вызове start_gc_task()
+    # no running event loop yet
     pass
